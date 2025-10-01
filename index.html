@@ -189,6 +189,248 @@ Salam dari AXTRITH-ID!</textarea>
     let members=[]
     let undoStack=[]
 
+    function renderMembers(){
+      const grid=document.getElementById('membersGrid')
+      grid.innerHTML=''
+      members.forEach((m,idx)=>{
+        const el=document.createElement('div')
+        el.className='member'
+        el.innerHTML=`
+          <img src="${m.photo}" alt="foto">
+          <div class='name'>${m.name}</div>
+          <div class='role'>${m.role}</div>
+          <div class='meta'>ID: ${m.ffid}</div>
+          <div class='meta'>Umur: ${m.age}</div>
+          <div class='meta'>Keahlian: ${m.skill}</div>
+          <div class='moto'>Moto: "${m.moto||'-'}"</div>
+          <div style='margin-top:8px'><button class='btn ghost' onclick='removeMember(${idx})'>Hapus</button></div>`
+        grid.appendChild(el)
+      })
+    }
+
+    function addMember(){
+      const name=document.getElementById('m_name').value.trim()
+      const ffid=document.getElementById('m_ffid').value.trim()
+      const age=document.getElementById('m_age').value.trim()
+      const role=document.getElementById('m_role').value
+      const skill=document.getElementById('m_skill').value
+      const moto=document.getElementById('m_moto').value.trim()
+      const photoInput=document.getElementById('m_photo')
+      if(!name||!ffid||!age){alert('Isi semua data dulu ya');return}
+      if(photoInput.files.length===0){alert('Wajib upload foto!');return}
+      const reader=new FileReader()
+      reader.onload=function(e){
+        const photo=e.target.result
+        const newMember={name,ffid,age,role,skill,moto,photo,joined:new Date().toISOString()}
+        members.push(newMember)
+        renderMembers();
+
+        // 🔽 kirim ke Google Sheets
+        fetch(SHEET_URL,{
+          method:"POST",
+          body:JSON.stringify(newMember),
+          headers:{"Content-Type":"application/json"}
+        }).then(r=>r.text()).then(res=>console.log("Sheet:",res)).catch(err=>console.error(err))
+
+        document.getElementById('m_name').value=''
+        document.getElementById('m_ffid').value=''
+        document.getElementById('m_age').value=''
+        document.getElementById('m_moto').value=''
+        document.getElementById('m_photo').value=''
+      }
+      reader.readAsDataURL(photoInput.files[0])
+    }
+
+    function removeMember(i){undoStack.push(members[i]);members.splice(i,1);renderMembers()}
+    function undoMember(){if(undoStack.length===0){alert('Tidak ada item untuk di-undo');return}members.push(undoStack.pop());renderMembers()}
+    function copyIntro(){navigator.clipboard.writeText(document.getElementById('intro_template').value).then(()=>alert('Template disalin'))}
+    function copyInvite(){navigator.clipboard.writeText("Halo, saya ingin bergabung ke guild AXTRITH-ID (Free Fire). Nama: [Nama] - Siap ikut peraturan guild.").then(()=>alert('Template invite disalin'))}
+    function exportMembers(){
+      const csv=['Nama,Role,ID,Umur,Keahlian,Moto,Joined',...members.map(m=>`${m.name},${m.role},${m.ffid},${m.age},${m.skill},${m.moto},${m.joined}`)].join('\n')
+      const blob=new Blob([csv],{type:'text/csv'})
+      const url=URL.createObjectURL(blob)
+      const a=document.createElement('a')
+      a.href=url;a.download='axtrith_ff_members.csv';a.click();a.remove();URL.revokeObjectURL(url)
+    }
+
+    const adminPhone='6283824063521'
+    function sendJoin(){
+      const name=document.getElementById('join_name').value.trim()
+      const ffname=document.getElementById('join_ffname').value.trim()
+      const ffid=document.getElementById('join_ffid').value.trim()
+      const age=document.getElementById('join_age').value.trim()
+      const note=document.getElementById('join_note').value.trim()
+      if(!name||!ffname||!ffid||!age){alert('Isi semua data dulu ya');return}
+
+      // 🔽 Kirim ke WhatsApp
+      const text=`Permohonan Gabung%0A`+
+                 `Nama: ${encodeURIComponent(name)}%0A`+
+                 `Nama FF: ${encodeURIComponent(ffname)}%0A`+
+                 `ID FF: ${encodeURIComponent(ffid)}%0A`+
+                 `Umur: ${encodeURIComponent(age)}%0A`+
+                 `Note: ${encodeURIComponent(note)}%0A`
+      window.open(`https://wa.me/${adminPhone}?text=${text}`,'_blank')
+
+      // 🔽 Kirim ke Google Sheets juga
+      fetch(SHEET_URL,{
+        method:"POST",
+        body:JSON.stringify({name,ffname,ffid,age,note,from:"JoinForm"}),
+        headers:{"Content-Type":"application/json"}
+      }).then(r=>r.text()).then(res=>console.log("Join Sheet:",res)).catch(err=>console.error(err))
+    }
+
+    function clearJoin(){
+      document.getElementById('join_name').value=''
+      document.getElementById('join_ffname').value=''
+      document.getElementById('join_ffid').value=''
+      document.getElementById('join_age').value=''
+      document.getElementById('join_note').value=''
+    }
+
+    // 🔽 Ambil data dari Google Sheets saat halaman dibuka
+    async function loadMembersFromSheet(){
+      try {
+        const res = await fetch(SHEET_URL)
+        const data = await res.json()
+        if(Array.isArray(data)){
+          members = data
+          renderMembers()
+        } else {
+          console.error("Format data tidak sesuai:", data)
+        }
+      } catch(err){
+        console.error("Gagal ambil data:", err)
+      }
+    }
+
+    // Panggil fungsi load saat pertama kali buka
+    loadMembersFromSheet()
+
+    function scrollToSection(id){document.getElementById(id).scrollIntoView({behavior:'smooth'})}
+  </script>
+</body>
+            </html>
+  <main class="container">
+    <!-- HERO -->
+    <section class="hero">
+      <div class="card" id="home">
+        <h1>Selamat datang di Guild AXTRITH-ID</h1>
+        <p class="lead">Guild Free Fire untuk mabar bareng, push rank, dan jadi komunitas solid. Baca peraturan sebelum gabung — respect dan sportivitas nomor 1.</p>
+        <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn" onclick="scrollToSection('join')">Gabung Sekarang</button>
+          <button class="btn ghost" onclick="copyInvite()">Salin Template Invite</button>
+          <button class="btn ghost" onclick="exportMembers()">Unduh Daftar Member</button>
+        </div>
+      </div>
+      <aside class="card">
+        <h3 style="margin-top:0">Quick Info</h3>
+        <p class="lead">Leader: <strong>MᴀsLᴀᴛᴇx〡ATR</strong><br>WA Admin: <strong>083824063521</strong></p>
+        <div style="margin-top:12px">
+          <strong>Jam Mabar</strong>
+          <p class="lead">Setiap Hari</p>
+        </div>
+      </aside>
+    </section>
+
+    <!-- RULES -->
+    <section class="card" id="rules" style="margin-top:16px">
+      <h2>Peraturan Guild</h2>
+      <ol class="rules">
+        <li>Wajib mabar se guild setiap hari.</li>
+        <li>Poin mingguan minimal <strong>600</strong>. Jika berada di bawah 600 setelah 2 minggu akan diberikan peringatan; 3 minggu berturut-turut akan di-mix atau diberi sanksi.</li>
+        <li>Wajib ikut push guild wars (poin minimal: cowo 80,cwe 60)</li>
+        <li>Good attitude —toxic sewajarnya, saling menghormati.</li>
+        <li>Wajib masuk grup WhatsApp ketika diterima.</li>
+        <li>Ganti background FF sesuai kebijakan guild jika diminta.</li>
+      </ol>
+    </section>
+
+    <!-- MEMBERS -->
+    <section class="card" id="members" style="margin-top:16px">
+      <h2>Member</h2>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:12px">
+        <div style="flex:1;min-width:260px">
+          <label for="m_name">Nama</label>
+          <input id="m_name" type="text" placeholder="Nama">
+
+          <label for="m_ffid">ID Akun FF</label>
+          <input id="m_ffid" type="text" placeholder="ID Free Fire">
+
+          <label for="m_age">Umur</label>
+          <input id="m_age" type="text" placeholder="Umur">
+
+          <label for="m_role">Role</label>
+          <select id="m_role">
+            <option>Member</option>
+            <option>Officer</option>
+            <option>Co Leader</option>
+            <option>Leader</option>
+          </select>
+
+          <label for="m_skill">Keahlian</label>
+          <select id="m_skill">
+            <option>Rusher</option>
+            <option>Sniper</option>
+            <option>Rifler</option>
+            <option>Support</option>
+            <option>Bomber</option>
+          </select>
+
+          <label for="m_moto">Moto</label>
+          <input id="m_moto" type="text" placeholder="Moto hidup / semboyan">
+
+          <label for="m_photo">Foto (Wajib)</label>
+          <input id="m_photo" type="file" accept="image/*">
+
+          <div style="margin-top:10px" class="row">
+            <button class="btn" onclick="addMember()">Tambah</button>
+            <button class="btn ghost" onclick="undoMember()">Undo</button>
+          </div>
+        </div>
+        <div style="flex:1;min-width:260px">
+          <label>Template Perkenalan (Bisa disalin)</label>
+          <textarea id="intro_template" rows="7">Perkenalkan, nama saya [Nama].
+Saya player Free Fire.
+ID: [ID Akun]. Umur: [Umur] tahun.
+Role: [Role]. Keahlian: [Keahlian].
+Moto: [Moto].
+Salam dari AXTRITH-ID!</textarea>
+          <div style="margin-top:8px"><button class="btn" onclick="copyIntro()">Salin Template</button></div>
+        </div>
+      </div>
+      <div class="members-grid" id="membersGrid" style="margin-top:12px"></div>
+    </section>
+
+    <!-- JOIN -->
+    <section class="card" id="join" style="margin-top:16px">
+      <h2>Form Gabung</h2>
+      <label for="join_name">Nama</label>
+      <input id="join_name" type="text">
+      <label for="join_ffname">Nama Akun FF</label>
+      <input id="join_ffname" type="text">
+      <label for="join_ffid">ID FF</label>
+      <input id="join_ffid" type="text">
+      <label for="join_age">Umur</label>
+      <input id="join_age" type="text">
+      <label for="join_note">Catatan</label>
+      <input id="join_note" type="text">
+      <div style="margin-top:10px" class="row">
+        <button class="btn" onclick="sendJoin()">Kirim ke WA</button>
+        <button class="btn ghost" onclick="clearJoin()">Bersihkan</button>
+      </div>
+    </section>
+
+    <footer>
+      © AXTRITH-ID • Guild Free Fire
+    </footer>
+  </main>  
+
+  <script>
+    const SHEET_URL="https://script.google.com/macros/s/AKfycbwcA31K5BvW67xENyHKgvMfePW_VU_CU7c7PR9zNO2JbJx9C7kBndWs-MJWbfr9dS7K/exec";
+    const membersKey='axtrith_members_ff'
+    let members=[]
+    let undoStack=[]
+
     function saveMembers(){localStorage.setItem(membersKey,JSON.stringify(members))}
     function renderMembers(){
       const grid=document.getElementById('membersGrid')
