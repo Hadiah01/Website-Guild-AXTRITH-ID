@@ -186,7 +186,7 @@ Salam dari AXTRITH-ID!</textarea>
   <script>
     const SHEET_URL="https://script.google.com/macros/s/AKfycbwcA31K5BvW67xENyHKgvMfePW_VU_CU7c7PR9zNO2JbJx9C7kBndWs-MJWbfr9dS7K/exec";
     const membersKey='axtrith_members_ff'
-    let members=JSON.parse(localStorage.getItem(membersKey)||'[]')
+    let members=[]
     let undoStack=[]
 
     function saveMembers(){localStorage.setItem(membersKey,JSON.stringify(members))}
@@ -208,6 +208,18 @@ Salam dari AXTRITH-ID!</textarea>
         grid.appendChild(el)
       })
     }
+
+    async function loadMembersFromSheet(){
+      try {
+        const res=await fetch(SHEET_URL)
+        const data=await res.json()
+        members=data||[]
+        renderMembers()
+      } catch(e){
+        console.error("Gagal ambil data:",e)
+      }
+    }
+
     function addMember(){
       const name=document.getElementById('m_name').value.trim()
       const ffid=document.getElementById('m_ffid').value.trim()
@@ -240,6 +252,7 @@ Salam dari AXTRITH-ID!</textarea>
       }
       reader.readAsDataURL(photoInput.files[0])
     }
+
     function removeMember(i){undoStack.push(members[i]);members.splice(i,1);saveMembers();renderMembers()}
     function undoMember(){if(undoStack.length===0){alert('Tidak ada item untuk di-undo');return}members.push(undoStack.pop());saveMembers();renderMembers()}
     function copyIntro(){navigator.clipboard.writeText(document.getElementById('intro_template').value).then(()=>alert('Template disalin'))}
@@ -277,6 +290,7 @@ Salam dari AXTRITH-ID!</textarea>
         headers:{"Content-Type":"application/json"}
       }).then(r=>r.text()).then(res=>console.log("Join Sheet:",res)).catch(err=>console.error(err))
     }
+
     function clearJoin(){
       document.getElementById('join_name').value=''
       document.getElementById('join_ffname').value=''
@@ -285,8 +299,10 @@ Salam dari AXTRITH-ID!</textarea>
       document.getElementById('join_note').value=''
     }
 
-    renderMembers()
+    // 🔽 awal load ambil data dari Sheet
+    loadMembersFromSheet()
+
     function scrollToSection(id){document.getElementById(id).scrollIntoView({behavior:'smooth'})}
   </script>
 </body>
-</html>
+            </html>
